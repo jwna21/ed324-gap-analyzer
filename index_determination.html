@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ED-324/ARP-6983 기반 AI System 개발보증수준(DAL) 판정 시스템</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Malgun Gothic','Segoe UI',Arial,sans-serif;font-size:13px;background:#f0f2f5;color:#1a1a2e}
+.wrap{max-width:960px;margin:0 auto;padding:16px}
+.hdr{background:#1a2b4a;color:#fff;padding:14px 20px;border-radius:10px;margin-bottom:16px}
+.hdr h1{font-size:16px;font-weight:600}
+.hdr p{font-size:11px;opacity:0.7;margin-top:4px}
+.progress{display:flex;gap:0;margin-bottom:16px;background:#fff;border:1px solid #dde1e7;border-radius:8px;overflow:hidden}
+.step-ind{flex:1;padding:9px 12px;text-align:center;font-size:11px;font-weight:500;color:#aaa;border-right:1px solid #dde1e7;cursor:pointer;transition:all 0.15s}
+.step-ind:last-child{border-right:none}
+.step-ind.active{background:#1a2b4a;color:#fff}
+.step-ind.done{background:#e8f4e8;color:#2d6a2d}
+.step-ind.blocked{background:#fceaea;color:#a32d2d}
+.card{background:#fff;border:1px solid #dde1e7;border-radius:10px;padding:16px 20px;margin-bottom:12px}
+.card h2{font-size:13px;font-weight:600;color:#1a2b4a;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #eef0f4;display:flex;align-items:center;gap:6px}
+.step-num{width:22px;height:22px;border-radius:50%;background:#1a2b4a;color:#fff;font-size:11px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.fr{margin-bottom:10px}
+.fr label{display:block;font-size:11px;color:#555;margin-bottom:3px;font-weight:500}
+.fr label span{font-size:10px;color:#aaa;font-weight:400;margin-left:4px}
+.fr input,.fr select,.fr textarea{width:100%;padding:7px 9px;border:1px solid #ccc;border-radius:6px;font-size:12px;color:#222;font-family:inherit;background:#fff}
+.fr textarea{resize:vertical;height:52px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.alert{padding:10px 12px;border-radius:6px;font-size:12px;margin-bottom:10px;line-height:1.6}
+.alert-info{background:#edf4ff;border-left:3px solid #185FA5;color:#0a3d70}
+.alert-warn{background:#fff8e8;border-left:3px solid #d4a017;color:#5a3e00}
+.alert-danger{background:#fceaea;border-left:3px solid #e24b4a;color:#6b1717}
+.alert-success{background:#e8f4e8;border-left:3px solid #2d8a2d;color:#1a4d1a}
+.btn{padding:8px 18px;border-radius:6px;border:none;cursor:pointer;font-size:12px;font-weight:500;font-family:inherit}
+.btn-primary{background:#1a2b4a;color:#fff}
+.btn-primary:hover{background:#243d6b}
+.btn-secondary{background:#fff;color:#1a2b4a;border:1px solid #1a2b4a}
+.btn-danger{background:#fceaea;color:#a32d2d;border:1px solid #f0a0a0}
+.btn-row{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+.result-box{background:#f6f8fc;border:1px solid #dde1e7;border-radius:8px;padding:14px}
+.result-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.result-card{background:#fff;border:1px solid #dde1e7;border-radius:8px;padding:12px;text-align:center}
+.result-card .val{font-size:28px;font-weight:700;line-height:1}
+.result-card .lbl{font-size:10px;color:#888;margin-top:4px}
+.result-card.idal{border-top:3px solid #1a2b4a}
+.result-card.al{border-top:3px solid #185FA5}
+.result-card.swal{border-top:3px solid #0F6E56}
+.scope-badge{display:inline-block;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;margin-bottom:12px}
+.scope-ok{background:#e8f4e8;color:#1a5c1a;border:1px solid #74c7a5}
+.scope-no{background:#fceaea;color:#7a1a1a;border:1px solid #f0a0a0}
+.obj-section{margin-top:12px}
+.obj-section h3{font-size:12px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px}
+.obj-table{width:100%;border-collapse:collapse;font-size:11px}
+.obj-table th{background:#1a2b4a;color:#fff;padding:6px 8px;text-align:left}
+.obj-table td{padding:5px 8px;border-bottom:1px solid #eef0f4}
+.obj-table tr:last-child td{border-bottom:none}
+.obj-table tr:hover td{background:#f8f9fc}
+.tag-r{background:#e8f4e8;color:#2d6a2d;padding:1px 6px;border-radius:3px;font-weight:500}
+.tag-n{background:#f2f2f2;color:#aaa;padding:1px 6px;border-radius:3px}
+.tag-na{background:#fceaea;color:#888;padding:1px 6px;border-radius:3px}
+.severity-card{border:2px solid transparent;border-radius:8px;padding:10px 12px;cursor:pointer;margin-bottom:6px;transition:all 0.15s}
+.severity-card:hover{border-color:#1a2b4a;background:#f8f9fc}
+.severity-card.selected{border-color:#1a2b4a;background:#edf4ff}
+.severity-card .title{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px}
+.severity-card .desc{font-size:11px;color:#666;margin-top:3px}
+.sev-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.note-box{font-size:10px;color:#888;background:#f6f8fc;border-radius:4px;padding:6px 8px;margin-top:6px;line-height:1.6}
+.panel{display:none}
+.panel.active{display:block}
+.obj-count{font-size:11px;color:#888;margin-left:6px}
+.link-btn{display:inline-block;margin-top:8px;padding:6px 14px;background:#1a2b4a;color:#fff;border-radius:6px;font-size:11px;text-decoration:none;cursor:pointer;border:none;font-family:inherit}
+
+    .dal-section{border:1px solid #ddd;border-radius:8px;padding:12px;margin-bottom:10px}
+    .dal-sec-hdr{font-weight:700;color:#1a2b4a;font-size:13px;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+    .dal-sec-sub{font-weight:400;font-size:10px;color:#888}
+    .btn-add{margin-left:auto;padding:3px 10px;background:#185fa5;color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer}
+    .btn-del{background:#fceaea;color:#a32d2d;border:1px solid #e57373;border-radius:3px;padding:1px 6px;cursor:pointer;font-size:11px}
+    .btn-sm{padding:4px 10px;border:none;border-radius:4px;font-size:11px;cursor:pointer}
+    .btn-warn{background:#ba7517;color:#fff}
+    .fmea-tbl{width:100%;border-collapse:collapse;font-size:11px}
+    .fmea-tbl th{background:#1a2b4a;color:#fff;padding:5px 6px;text-align:center;font-size:10px}
+    .fmea-tbl td{padding:3px 4px;border-bottom:1px solid #eee;vertical-align:middle}
+    .tbl-inp{width:100%;border:1px solid #ddd;border-radius:3px;padding:3px 5px;font-size:11px}
+    .tbl-sel{width:100%;border:1px solid #ddd;border-radius:3px;padding:3px;font-size:11px}
+    .dal-card{border:2px solid #e0e0e0;border-radius:8px;padding:12px;text-align:center}
+    .dal-card-lbl{font-size:11px;color:#888;margin-bottom:4px}
+    .dal-card-lbl small{display:block;font-size:9px;color:#aaa}
+    .dal-card-val{font-size:20px;font-weight:800;margin:4px 0}
+    .sev-pill{display:inline-block;padding:2px 10px;border-radius:10px;color:#fff;font-size:10px;font-weight:700}
+    details>summary{list-style:none;cursor:pointer}
+    details>summary::-webkit-details-marker{display:none}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="hdr">
+  <h1>ED-324/ARP-6983 기반 AI System 개발보증수준(DAL) 판정 시스템</h1>
+  <p>ED-324/ARP 6983 기반 (Process Standard for Development and Certification/Approval of Aeronautical Safety-Related Products Implementing AI) </p>
+</div>
+
+<div class="progress">
+  <div class="step-ind active" onclick="goStep(0)" id="ind0">① 인증신청장비</div>
+  <div class="step-ind" onclick="goStep(1)" id="ind1">② 신청 적격성</div>
+  <div class="step-ind" onclick="goStep(2)" id="ind2">③ DAL 판정</div>
+  <div class="step-ind" onclick="goStep(3)" id="ind3">④ MLC 특성</div>
+  <div class="step-ind" onclick="goStep(4)" id="ind4">⑤ 판정 결과</div>
+</div>
+
+<!-- STEP 0: 인증신청장비 정보 -->
+<div class="panel active" id="panel0">
+<div class="card">
+  <h2><span class="step-num">1</span> 인증신청장비 정보</h2>
+  <div class="grid2">
+    <div class="fr"><label>장비명 (공식 명칭)</label><input id="equip_name" placeholder="예) ACAS-Xu, PilotEye™, K-UAM 충돌회피"></div>
+    <div class="fr"><label>개발 기관 / 제조사</label><input id="developer" placeholder="예) MIT Lincoln Laboratory / FAA"></div>
+  </div>
+  <div class="grid3">
+    <div class="fr"><label>개발 권역</label>
+      <select id="region">
+        <option value="">선택</option>
+        <option>유럽 (EASA/SESAR)</option>
+        <option>미국 (FAA/NASA)</option>
+        <option>일본 (JAXA/ENRI)</option>
+        <option>중국 (CAAC)</option>
+        <option>한국</option>
+        <option>기타</option>
+      </select>
+    </div>
+    <div class="fr"><label>적용 도메인 <span>(Table 1 기준)</span></label>
+      <select id="domain">
+        <option value="">선택</option>
+        <option value="airborne">항공기 탑재 (Airborne) → IDAL</option>
+        <option value="atm">ATM/ANS → AL / SWAL</option>
+      </select>
+    </div>
+    <div class="fr"><label>시스템 상태</label>
+      <select id="status">
+        <option value="">선택</option>
+        <option>개발 계획 중</option>
+        <option>개발 중</option>
+        <option>인증 신청 중</option>
+        <option>인증 완료</option>
+        <option>운용 중</option>
+      </select>
+    </div>
+  </div>
+  <div class="fr"><label>장비 기능 설명</label><textarea id="equip_desc" placeholder="ML 구성요소가 수행하는 기능을 간략히 서술"></textarea></div>
+  <div class="btn-row"><button class="btn btn-primary" onclick="goStep(1)">다음 →</button></div>
+</div>
+</div>
+
+<!-- STEP 1: 신청 적격성 -->
+<div class="panel" id="panel1">
+<div class="card">
+  <h2><span class="step-num">2</span> 신청 적격성 (Pre-Filter)</h2>
+  <div class="alert alert-info">📋 <strong>ED-324 §1 Scope:</strong> Issue 1은 비적응형(non-adaptive) 지도학습(supervised)에 한정됩니다. 아래 조건을 충족해야 판정이 계속됩니다.</div>
+  
+  <div class="fr">
+    <label>ML 학습 방식 <span>§1 Scope — 적용 대상 ML 기술 유형</span></label>
+    <select id="ml_mode" onchange="checkPreFilter()">
+      <option value="">선택</option>
+      <option value="supervised">지도학습 (Supervised Learning)</option>
+      <option value="unsupervised">비지도학습 (Unsupervised Learning)</option>
+      <option value="rl">강화학습 (Reinforcement Learning)</option>
+      <option value="ensemble">앙상블 (Supervised 기반)</option>
+      <option value="other">기타 AI 기술</option>
+    </select>
+  </div>
+  <div class="fr">
+    <label>배포 후 모델 변경 여부 <span>§1 — Non-adaptive ML = 배포 후 가중치 고정</span></label>
+    <select id="is_frozen" onchange="checkPreFilter()">
+      <option value="">선택</option>
+      <option value="frozen">고정 (Frozen) — 배포 후 가중치 변경 없음</option>
+      <option value="adaptive">변경됨 (Adaptive) — 온라인 학습 또는 업데이트</option>
+    </select>
+  </div>
+  <div id="prefilter_result"></div>
+  <div class="btn-row">
+    <button class="btn btn-secondary" onclick="goStep(0)">← 이전</button>
+    <button class="btn btn-primary" id="btn_pf_next" onclick="goStep(2)" disabled>다음 →</button>
+  </div>
+</div>
+</div>
+
+<!-- STEP 2: DAL 판정 -->
+<div class="panel" id="panel2">
+<div class="card">
+  <h2><span class="step-num">3</span> DAL 판정 — FMEA 템플릿 &amp; FTA 고장률 입력</h2>
+  <div class="alert alert-info" style="margin-bottom:8px;font-size:11px">
+    📋 <strong>ARP4761A §5~§7 / ARP4754B Table 3 / ED-324 §4.4.1.1</strong><br>
+    ① FMEA 템플릿에 고장조건을 입력하고 FTA 결과(MLC 기여 고장률)를 함께 입력 →
+    ② 시스템이 calc_DAL 자동 계산 → ③ expected_DAL 추론 → ④ 사용자 target_DAL 입력·검증 → ⑤ 최종 판정
+  </div>
+
+  <!-- ══ 1. FMEA 템플릿 ══ -->
+  <div class="dal-section" style="background:#f8f9ff;border:1px solid #c5cae9">
+    <div class="dal-sec-hdr">
+      📄 1. System FMEA 템플릿
+      <span class="dal-sec-sub">ARP4761A §6 — 고장조건별 심각도 × FTA 고장률 입력</span>
+      <button class="btn-add" onclick="fmeaAddRow()">+ 고장조건 추가</button>
+    </div>
+
+    <div style="overflow-x:auto">
+    <table class="fmea-tbl" id="fmeaTable">
+      <thead>
+        <tr>
+          <th style="width:80px">FC_ID</th>
+          <th style="width:130px">기능 설명</th>
+          <th style="width:120px">고장 모드</th>
+          <th style="width:140px">최종 영향 (End Effect)</th>
+          <th style="width:80px">심각도<br><small>ARP4761A</small></th>
+          <th style="width:160px">MLC 기여 고장률<br><small>FTA Basic Event (/FH)</small></th>
+          <th style="width:70px">치명도<br><small>Sv×λ</small></th>
+          <th style="width:60px">Required<br>IDAL</th>
+          <th style="width:36px"></th>
+        </tr>
+      </thead>
+      <tbody id="fmeaTbody"></tbody>
+    </table>
+    </div>
+    <div id="fmea_empty" style="text-align:center;color:#aaa;font-size:12px;padding:16px">
+      "+ 고장조건 추가" 버튼으로 FMEA 행을 추가하세요
+    </div>
+  </div>
+
+  <!-- ══ 2. calc_DAL ══ -->
+  <div class="dal-section" style="background:#f0f4ff;border:1px solid #9fa8da;display:none" id="sec_calc">
+    <div class="dal-sec-hdr">⚙️ 2. calc_DAL 자동 계산 <span class="dal-sec-sub">FMEA×FTA 입력값 기반</span></div>
+    <div id="calc_dal_detail" style="font-size:11px;color:#555;margin-bottom:8px;line-height:1.8;border-left:3px solid #9fa8da;padding-left:10px"></div>
+    <div id="calc_dal_result" style="font-size:16px;font-weight:700;text-align:center;padding:10px;border-radius:6px"></div>
+  </div>
+
+  <!-- ══ 3. expected_DAL 추론기 ══ -->
+  <div class="dal-section" style="background:#f0fff4;border:1px solid #a8d5b5;display:none" id="sec_exp">
+    <div class="dal-sec-hdr">🧠 3. expected_DAL 추론기 <span class="dal-sec-sub">항공 공학 지식베이스 — 신청 장비 특성 입력</span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="fr" style="margin:0">
+        <label>시스템 기능 분류 <span>기능 카테고리</span></label>
+        <select id="exp_func" onchange="runExpected()">
+          <option value="">— 선택 —</option>
+          <option value="collision">충돌 회피 (Collision Avoidance)</option>
+          <option value="fcl">비행 제어 (Flight Control Law)</option>
+          <option value="autopilot">자동 조종 (Autopilot)</option>
+          <option value="nav">항법 (Navigation)</option>
+          <option value="autonomous">완전 자율 비행 (Full Autonomous)</option>
+          <option value="surveillance">감시·탐지 (Surveillance/Detection)</option>
+          <option value="atm">ATM 결정 지원 (ATM Decision Support)</option>
+          <option value="maintenance">예측 정비 (Predictive Maintenance)</option>
+          <option value="fuel">연료·경제 최적화 (Fuel/Economy)</option>
+          <option value="display">정보 표시 (Display/HMI only)</option>
+          <option value="other">기타</option>
+        </select>
+      </div>
+      <div class="fr" style="margin:0">
+        <label>MLC 출력 권한 (Output Authority)</label>
+        <select id="exp_auth" onchange="runExpected()">
+          <option value="">— 선택 —</option>
+          <option value="cmd">CMD — 직접 제어 명령 (파일럿 개입 없음)</option>
+          <option value="adv">ADV — 권고 (파일럿 최종 결정)</option>
+          <option value="inf">INF — 정보 표시만</option>
+        </select>
+      </div>
+      <div class="fr" style="margin:0">
+        <label>파일럿/운용자 감시 가능 여부</label>
+        <select id="exp_monitor" onchange="runExpected()">
+          <option value="">— 선택 —</option>
+          <option value="yes">예 — 실시간 감시·개입 가능</option>
+          <option value="no">아니오 — 자율 실행 (감시 불가)</option>
+        </select>
+      </div>
+      <div class="fr" style="margin:0">
+        <label>결정론적 안전망/백업 존재 여부</label>
+        <select id="exp_backup" onchange="runExpected()">
+          <option value="">— 선택 —</option>
+          <option value="yes">예 — LUT/규칙 기반 백업 존재</option>
+          <option value="no">아니오 — ML이 유일한 수단</option>
+        </select>
+      </div>
+      <div class="fr" style="margin:0">
+        <label>비행 단계 (Critical Phase)</label>
+        <select id="exp_phase" onchange="runExpected()">
+          <option value="">— 선택 —</option>
+          <option value="all">전 비행 단계 (이착륙 포함)</option>
+          <option value="cruise">순항 단계만</option>
+          <option value="ground">지상 운용만</option>
+        </select>
+      </div>
+      <div class="fr" style="margin:0">
+        <label>유사 인증 선례</label>
+        <select id="exp_precedent" onchange="runExpected()">
+          <option value="">— 선택 —</option>
+          <option value="tcas">TCAS/ACAS-Xu (충돌 회피)</option>
+          <option value="ils">ILS/GPS 기반 항법</option>
+          <option value="efis">EFIS 디스플레이</option>
+          <option value="afcs">AFCS 자동비행</option>
+          <option value="none">선례 없음</option>
+        </select>
+      </div>
+    </div>
+    <div id="exp_dal_result" style="display:none;margin-top:10px;border-radius:6px;padding:10px;font-size:12px;line-height:1.8"></div>
+  </div>
+
+  <!-- ══ 4. target_DAL 입력·검증 ══ -->
+  <div class="dal-section" style="background:#fff8e1;border:1px solid #ffe082;display:none" id="sec_target">
+    <div class="dal-sec-hdr">🎯 4. Target DAL 입력 및 적정성 검증</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:start">
+      <div class="fr" style="margin:0">
+        <label>제안 Target IDAL <span>시스템이 달성해야 할 목표 등급</span></label>
+        <select id="target_idal" onchange="validateTarget()" style="border:2px solid #185fa5;font-weight:700">
+          <option value="">— 선택 —</option>
+          <option value="A">IDAL A / AL 1 (Catastrophic)</option>
+          <option value="B">IDAL B / AL 2 (Hazardous)</option>
+          <option value="C">IDAL C / AL 3 (Major) ← ED-324 Issue 1 최상한</option>
+          <option value="D">IDAL D / AL 5 (Minor)</option>
+          <option value="E">IDAL E / AL 6 (No Safety Effect)</option>
+        </select>
+      </div>
+      <div class="fr" style="margin:0">
+        <label>아키텍처 완화 근거 <span>ARP4754B §5.2.3</span></label>
+        <select id="arch_credit" onchange="validateTarget()">
+          <option value="none">없음</option>
+          <option value="monitor">독립 모니터 + 경보 (Case 2, 최대 1단계)</option>
+          <option value="monitor_ss">독립 모니터 + 안전상태 전환 (Case 3, 1단계)</option>
+          <option value="dissimilar">이중화 비유사 채널 (1~2단계)</option>
+          <option value="triple">삼중화 (2단계)</option>
+        </select>
+      </div>
+    </div>
+    <div id="target_validation" style="display:none;margin-top:8px"></div>
+    <!-- 거부 사유 기록 -->
+    <div id="sec_dispute" style="display:none;margin-top:8px;background:#fce8e6;border:1px solid #e57373;border-radius:6px;padding:10px">
+      <div style="font-size:11px;font-weight:700;color:#b71c1c;margin-bottom:4px">
+        ⚠️ expected_DAL과 불일치 — 변경 거부 시 사유를 반드시 기록하세요 (ARP4754B §5.1.4)
+      </div>
+      <textarea id="dispute_reason" rows="2" style="width:100%;font-size:11px;border:1px solid #e57373;border-radius:4px;padding:4px"
+        placeholder="예: 독립 FTA 전문가 검토 결과 IDAL D로 충분함을 확인. 검토자: Hong Gil-dong, 2026-04-05"></textarea>
+      <button class="btn-sm btn-warn" onclick="acceptDispute()" style="margin-top:4px">사유 기록하고 계속 진행</button>
+    </div>
+  </div>
+
+  <!-- ══ 5. 최종 판정 ══ -->
+  <div class="dal-section" style="border:2px solid #1a2b4a;display:none" id="sec_final">
+    <div class="dal-sec-hdr" style="color:#1a2b4a">📊 5. 최종 판정 — calc_DAL vs target_DAL</div>
+    <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-bottom:12px">
+      <div id="card_calc" class="dal-card"></div>
+      <div style="font-size:22px;color:#888">vs</div>
+      <div id="card_target" class="dal-card" style="border-style:dashed"></div>
+    </div>
+    <div id="final_verdict" style="border-radius:8px;padding:14px;text-align:center;font-size:14px;font-weight:700;margin-bottom:10px"></div>
+    <div id="final_issue1" style="text-align:center;margin-bottom:8px"></div>
+    <div id="final_log" style="font-size:10px;color:#aaa;border-top:1px solid #eee;padding-top:6px;margin-top:6px"></div>
+  </div>
+
+  <div class="alert alert-warn" style="margin-top:8px;font-size:10px">
+    ⚠️ <strong>PSSA:</strong> calc_DAL은 입력 데이터 기반 초기값입니다. ARP4754B §5.2.3 PSSA에서 최종 확정됩니다.
+    (ED-324 §4.4.1.1)
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-secondary" onclick="goStep(1)">← 이전</button>
+    <button class="btn btn-primary" id="btn_fha_next" onclick="goStep(3)" disabled>다음 →</button>
+  </div>
+</div>
+</div>
+<!-- STEP 3: MLC 특성 -->
+<div class="panel" id="panel3">
+<div class="card">
+  <h2><span class="step-num">4</span> MLC 특성 정보 입력</h2>
+  <div class="alert alert-info">📋 이 정보는 IDAL 변경에 사용되지 않습니다. 아키텍처 기록 및 갭분석기 연동을 위한 참조 정보입니다. (ED-324 §4.4.1.1, §5.2)</div>
+  <div class="grid2">
+    <div class="fr">
+      <label>MLC 출력 역할 <span>§4.4.1.1</span></label>
+      <select id="output_role">
+        <option value="">선택</option>
+        <option value="cmd">직접 제어 명령 (Command) — 자율 실행</option>
+        <option value="adv">조종사/운용자 권고 (Advisory) — 인간 최종 결정</option>
+        <option value="inf">정보 제공 (Information) — 표시만</option>
+      </select>
+    </div>
+    <div class="fr">
+      <label>ODD 정의 수준 <span>§5.2.3.2</span></label>
+      <select id="odd_defined">
+        <option value="">선택</option>
+        <option value="full">완전 정의 — 모든 입력 변수 정량적 명시</option>
+        <option value="partial">부분 정의 — 일부 변수만 정의</option>
+        <option value="none">미정의 — ODD 정의 없음</option>
+      </select>
+    </div>
+    <div class="fr">
+      <label>결정론적 안전망 존재 여부 <span>§4.2.1.2 (ACAS-Xu LUT 참조)</span></label>
+      <select id="has_safety_net">
+        <option value="">선택</option>
+        <option value="yes">있음 — ML 고장 시 비-ML 백업 작동</option>
+        <option value="no">없음 — ML 단독 동작</option>
+      </select>
+    </div>
+    <div class="fr">
+      <label>실시간 MLC 출력 감시 모듈 <span>§4.2.1.2</span></label>
+      <select id="has_monitor">
+        <option value="">선택</option>
+        <option value="yes">있음 — 체크 모듈로 출력 실시간 감시</option>
+        <option value="no">없음</option>
+      </select>
+    </div>
+    <div class="fr">
+      <label>ML 모델 입력 변수 수 <span>§5.2.3.2</span></label>
+      <input type="number" id="input_dim" placeholder="예) ACAS-Xu: 5 (ρ, θ, ψ, v_own, v_int)" min="1">
+    </div>
+    <div class="fr">
+      <label>ODD 분할 영역 수 <span>§5.2.3.2 (ACAS-Xu: 45)</span></label>
+      <input type="number" id="odd_partitions" placeholder="예) 45" min="1">
+    </div>
+  </div>
+  <div class="fr">
+    <label>형식 검증(Formal Verification) 수행 여부 <span>§5.6.3.3 (Reluplex/Marabou 등 SMT 솔버)</span></label>
+    <select id="formal_verified">
+      <option value="">선택</option>
+      <option value="yes">수행 예정 / 수행 중 / 완료</option>
+      <option value="no">미수행 / 계획 없음</option>
+    </select>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-secondary" onclick="goStep(2)">← 이전</button>
+    <button class="btn btn-primary" onclick="goStep(4)">판정 결과 보기 →</button>
+  </div>
+</div>
+</div>
+
+<!-- STEP 4: 판정 결과 -->
+<div class="panel" id="panel4">
+<div class="card">
+  <h2><span class="step-num">5</span> 판정 결과</h2>
+  <div id="result_content"></div>
+</div>
+</div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// DAL DETERMINATION ENGINE
+// ARP4761A §5~§7 / ARP4754B Table 3 / ED-324 §4.4.1.1
+// ═══════════════════════════════════════════════════════
+
+const SEV_MAP = {
+  CAT:{w:5,thr:1e-9,idal:'A',iN:0,al:'1',swal:'1',  color:'#e24b4a',label:'Catastrophic'},
+  HAZ:{w:4,thr:1e-7,idal:'B',iN:1,al:'2',swal:'N/A',color:'#ef7c1a',label:'Hazardous'},
+  MAJ:{w:3,thr:1e-5,idal:'C',iN:2,al:'3',swal:'2',  color:'#d4a017',label:'Major'},
+  MIN:{w:2,thr:1e-3,idal:'D',iN:3,al:'5',swal:'3~4',color:'#639922',label:'Minor'},
+  NSE:{w:1,thr:Infinity,idal:'E',iN:4,al:'6',swal:'N/A',color:'#888',label:'No Safety Effect'},
+};
+const IDAL_ORD = ['A','B','C','D','E'];
+const ARCH_MAX = {none:0,monitor:1,monitor_ss:1,dissimilar:2,triple:2};
+
+// ─── expected_DAL knowledge base ───────────────────────
+const EXP_RULES = [
+  // [func, auth, monitor, backup, phase] → idal_range, reason
+  {match:{func:'autonomous',auth:'cmd'}, exp:['A','B'], reason:'완전 자율 직접 제어 — CAT/HAZ 수준. IDAL A/B 필수 (EH216-S 사례)'},
+  {match:{func:'fcl',auth:'cmd'}, exp:['A','B'], reason:'비행 제어 직접 명령 — IDAL A (DO-178C Level A 선례)'},
+  {match:{func:'autopilot',auth:'cmd',monitor:'no'}, exp:['A','B'], reason:'자동조종 직접 제어+감시불가 — IDAL A/B'},
+  {match:{func:'autopilot',auth:'cmd',monitor:'yes'}, exp:['B','C'], reason:'자동조종 직접 제어+파일럿 감시 — IDAL B/C'},
+  {match:{func:'collision',backup:'yes',auth:'adv'}, exp:['C'], reason:'충돌 회피 권고+안전망 존재 — IDAL C (ACAS-Xu 선례)'},
+  {match:{func:'collision',backup:'no'}, exp:['A','B'], reason:'충돌 회피+안전망 없음 — IDAL A/B 필요'},
+  {match:{func:'nav',auth:'cmd'}, exp:['B','C'], reason:'항법 직접 명령 — IDAL B/C (ILS 선례)'},
+  {match:{func:'nav',auth:'adv'}, exp:['C','D'], reason:'항법 권고 — IDAL C/D'},
+  {match:{func:'surveillance',auth:'adv'}, exp:['C','D'], reason:'감시·탐지 권고 — IDAL C/D (PilotEye™ 선례)'},
+  {match:{func:'atm',auth:'adv'}, exp:['C','D'], reason:'ATM 결정 지원 권고 — AL3~AL5 (JARVIS 선례)'},
+  {match:{func:'maintenance',auth:'inf'}, exp:['D','E'], reason:'예측 정비 정보 표시 — IDAL D/E (Honeywell STRAP 선례)'},
+  {match:{func:'fuel',auth:'inf'}, exp:['E'], reason:'연료 최적화 정보 — IDAL E (NSE 수준)'},
+  {match:{func:'display',auth:'inf'}, exp:['D','E'], reason:'정보 표시 전용 — IDAL D/E'},
+];
+
+function matchRule(rule, f, a, m, b, ph) {
+  const M = rule.match;
+  if(M.func && M.func!==f) return false;
+  if(M.auth && M.auth!==a) return false;
+  if(M.monitor && M.monitor!==m) return false;
+  if(M.backup && M.backup!==b) return false;
+  if(M.phase && M.phase!==ph) return false;
+  return true;
+}
+
+// ─── FMEA row management ────────────────────────────────
+let fmeaRows = [];
+let rowCounter = 0;
+let calcDalLetter = null;
+let expDalRange = null;
+let disputeAccepted = false;
+let allLogs = [];
+
+function fmeaAddRow() {
+  rowCounter++;
+  const id = 'R' + String(rowCounter).padStart(3,'0');
+  const row = {id, fcId:id, func:'', mode:'', effect:'', sev:'', mant:'1', exp:'-5'};
+  fmeaRows.push(row);
+  renderFmeaTable();
+}
+
+function fmeaDelRow(idx) {
+  fmeaRows.splice(idx,1);
+  renderFmeaTable();
+  runCalcDal();
+}
+
+function fmeaUpdate(idx, field, val) {
+  fmeaRows[idx][field] = val;
+  renderFmeaTable();
+  runCalcDal();
+}
+
+function parsePow2(m,e) {
+  const mv=parseFloat(m), ev=parseInt(e);
+  return (isNaN(mv)||isNaN(ev)) ? null : mv*Math.pow(10,ev);
+}
+
+function fmtExp(p) {
+  if(!p||p===0) return '—';
+  const e=Math.floor(Math.log10(p));
+  const m=(p/Math.pow(10,e)).toFixed(1);
+  return `${m}×10<sup>${e}</sup>`;
+}
+
+function rowIDAL(sev, rate) {
+  if(!sev||!rate) return '—';
+  const s = SEV_MAP[sev];
+  if(!s) return '—';
+  // Required IDAL from probability
+  let probIDAL='E';
+  for(const [k,v] of Object.entries(SEV_MAP)) {
+    if(rate < v.thr) { probIDAL=k; break; }
+  }
+  // Required IDAL from severity
+  const sevIDAL = s.idal;
+  // Take more stringent (lower iN)
+  const pN = SEV_MAP[probIDAL]?.iN ?? 4;
+  const sN = s.iN;
+  const finalN = Math.min(pN, sN);
+  return IDAL_ORD[finalN];
+}
+
+function renderFmeaTable() {
+  const tbody = document.getElementById('fmeaTbody');
+  const empty = document.getElementById('fmea_empty');
+  empty.style.display = fmeaRows.length ? 'none' : 'block';
+  tbody.innerHTML = fmeaRows.map((r,i) => {
+    const rate = parsePow2(r.mant, r.exp);
+    const crit = rate && r.sev ? (SEV_MAP[r.sev]?.w||0) * rate : null;
+    const reqIDAL = rowIDAL(r.sev, rate);
+    const sevColor = r.sev ? (SEV_MAP[r.sev]?.color||'#888') : '#ccc';
+    return `<tr>
+      <td><input class="tbl-inp" value="${r.fcId}" onchange="fmeaUpdate(${i},'fcId',this.value)" placeholder="FC-001"></td>
+      <td><input class="tbl-inp" value="${r.func}" onchange="fmeaUpdate(${i},'func',this.value)" placeholder="충돌 회피 권고"></td>
+      <td><input class="tbl-inp" value="${r.mode}" onchange="fmeaUpdate(${i},'mode',this.value)" placeholder="NN 출력 오류"></td>
+      <td><input class="tbl-inp" value="${r.effect}" onchange="fmeaUpdate(${i},'effect',this.value)" placeholder="안전 마진 감소"></td>
+      <td>
+        <select class="tbl-sel" onchange="fmeaUpdate(${i},'sev',this.value)" style="border-left:4px solid ${sevColor}">
+          <option value="">—</option>
+          ${['CAT','HAZ','MAJ','MIN','NSE'].map(s=>`<option value="${s}" ${r.sev===s?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </td>
+      <td>
+        <div style="display:flex;align-items:center;gap:2px">
+          <input class="tbl-inp" style="width:40px;text-align:right" value="${r.mant}"
+            onchange="fmeaUpdate(${i},'mant',this.value)" placeholder="1.0">
+          <span style="font-size:10px">×10</span>
+          <input class="tbl-inp" style="width:36px;text-align:center" value="${r.exp}"
+            onchange="fmeaUpdate(${i},'exp',this.value)" placeholder="-5">
+          <span style="font-size:9px;color:#888">/FH</span>
+        </div>
+      </td>
+      <td style="text-align:center;font-size:10px;color:#666">
+        ${crit ? fmtExp(crit) : '—'}
+      </td>
+      <td style="text-align:center">
+        ${reqIDAL !== '—'
+          ? `<span style="background:${SEV_MAP[Object.entries(SEV_MAP).find(([,v])=>v.idal===reqIDAL)?.[0]]?.color||'#888'};color:#fff;padding:1px 7px;border-radius:8px;font-size:11px;font-weight:700">${reqIDAL}</span>`
+          : '<span style="color:#ccc">—</span>'}
+      </td>
+      <td style="text-align:center">
+        <button class="btn-del" onclick="fmeaDelRow(${i})">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── calc_DAL engine ────────────────────────────────────
+function runCalcDal() {
+  const sec = document.getElementById('sec_calc');
+  const detail = document.getElementById('calc_dal_detail');
+  const result = document.getElementById('calc_dal_result');
+
+  if(!fmeaRows.length){ sec.style.display='none'; calcDalLetter=null; updateFinal(); return; }
+  // Check all rows have sev + rate
+  const complete = fmeaRows.filter(r=>r.sev && parsePow2(r.mant,r.exp)!==null);
+  if(!complete.length){ sec.style.display='none'; calcDalLetter=null; updateFinal(); return; }
+
+  sec.style.display='block';
+  let lines=[], worstN=4;
+  complete.forEach(r=>{
+    const rate=parsePow2(r.mant,r.exp);
+    const req=rowIDAL(r.sev,rate);
+    const sev=SEV_MAP[r.sev];
+    const iN=IDAL_ORD.indexOf(req);
+    if(iN<worstN) worstN=iN;
+    lines.push(`[${r.fcId}] ${r.sev}(${sev.label}) × ${fmtExp(rate)}/FH → Required IDAL <strong>${req}</strong> (치명도: ${fmtExp(sev.w*rate)})`);
+  });
+  // Incomplete rows warning
+  const incomplete = fmeaRows.filter(r=>!r.sev||parsePow2(r.mant,r.exp)===null);
+  if(incomplete.length) lines.push(`⚠️ 미완성 행 ${incomplete.length}개 제외됨 — 심각도 또는 고장률 미입력`);
+
+  calcDalLetter = IDAL_ORD[worstN];
+  const cm = SEV_MAP[Object.keys(SEV_MAP).find(k=>SEV_MAP[k].idal===calcDalLetter)];
+  detail.innerHTML = lines.map(l=>`<div>• ${l}</div>`).join('');
+  result.innerHTML = `calc_DAL = <span style="color:${cm?.color||'#333'};font-size:22px">IDAL ${calcDalLetter}</span> / AL ${cm?.al||'?'}
+    &nbsp;&nbsp;<span style="font-size:11px;color:#888">(${complete.length}개 고장조건 중 최악값)</span>`;
+  result.style.background = '#e8f4e8';
+
+  logEntry('calc_DAL', `IDAL ${calcDalLetter} — ${complete.length}개 FC 분석`);
+  document.getElementById('sec_exp').style.display='block';
+  runExpected();
+}
+
+// ─── expected_DAL knowledge base ────────────────────────
+function runExpected() {
+  const f=document.getElementById('exp_func').value;
+  const a=document.getElementById('exp_auth').value;
+  const m=document.getElementById('exp_monitor').value;
+  const b=document.getElementById('exp_backup').value;
+  const ph=document.getElementById('exp_phase').value;
+  const res=document.getElementById('exp_dal_result');
+
+  if(!f||!a){ res.style.display='none'; return; }
+  res.style.display='block';
+
+  // Find best matching rule
+  let matched=null;
+  for(const rule of EXP_RULES) {
+    if(matchRule(rule,f,a,m,b,ph)){ matched=rule; break; }
+  }
+
+  if(!matched){
+    // Fallback: use auth+monitor heuristic
+    let iMin=4;
+    if(a==='cmd' && m==='no') iMin=0;
+    else if(a==='cmd' && m==='yes') iMin=1;
+    else if(a==='adv') iMin=2;
+    else iMin=3;
+    expDalRange=[IDAL_ORD[iMin]];
+    matched={exp:[IDAL_ORD[iMin]], reason:`기능 분류 불명확 — 출력 권한(${a})·감시 여부 기반 추론`};
+  } else {
+    expDalRange = matched.exp;
+  }
+
+  const rangeStr = expDalRange.join(' ~ ');
+  const expColor = SEV_MAP[Object.keys(SEV_MAP).find(k=>SEV_MAP[k].idal===expDalRange[0])]?.color||'#333';
+  res.style.background='#e8f5e9'; res.style.border='1px solid #81c784'; res.style.borderRadius='6px'; res.style.padding='10px';
+  res.innerHTML=`
+    <strong style="color:#1a5c1a">🧠 expected_DAL 추론 결과:</strong>
+    <span style="background:${expColor};color:#fff;padding:2px 10px;border-radius:10px;font-weight:700;margin-left:6px">IDAL ${rangeStr}</span><br>
+    <span style="font-size:10px;color:#555">근거: ${matched.reason}</span>`;
+
+  logEntry('expected_DAL', `IDAL ${rangeStr} — ${matched.reason}`);
+  document.getElementById('sec_target').style.display='block';
+  validateTarget();
+}
+
+// ─── target_DAL validation ──────────────────────────────
+function validateTarget() {
+  const tLetter = document.getElementById('target_idal').value;
+  const arch    = document.getElementById('arch_credit').value;
+  const valEl   = document.getElementById('target_validation');
+  const dispEl  = document.getElementById('sec_dispute');
+  if(!tLetter||!calcDalLetter){ valEl.style.display='none'; return; }
+
+  valEl.style.display='block'; disputeAccepted=false;
+  const tN  = IDAL_ORD.indexOf(tLetter);
+  const cN  = IDAL_ORD.indexOf(calcDalLetter);
+  const maxCredit = ARCH_MAX[arch]||0;
+
+  // — Rule 1: unreasonable relaxation
+  const sevWorst = fmeaRows.filter(r=>r.sev).reduce((w,r)=>{
+    const n=SEV_MAP[r.sev]?.iN??4; return n<w?n:w;
+  }, 4);
+  const minAllowedN = Math.max(0, sevWorst - maxCredit);
+
+  let msg='', bgc='', brc='', ok=false;
+
+  if(tN > minAllowedN+1) {
+    msg=`❌ 판정 거부: FMEA 최악 심각도(${IDAL_ORD[sevWorst]}) 기준 아키텍처 완화(최대 ${maxCredit}단계) 적용 후에도 IDAL ${tLetter}는 ${tN-minAllowedN-1}단계 초과 완화입니다. ARP4754B §5.2.3 한계 초과.`;
+    bgc='#fceaea'; brc='#a32d2d';
+  } else if(expDalRange && !expDalRange.includes(tLetter) && Math.abs(tN - IDAL_ORD.indexOf(expDalRange[0])) > 1) {
+    // Mismatch with expected_DAL by >1 level — requires justification
+    msg=`⚠️ expected_DAL(IDAL ${expDalRange.join('/')})과 ${Math.abs(tN-IDAL_ORD.indexOf(expDalRange[0]))}단계 불일치. Target IDAL ${tLetter}을 선택한 근거를 제공하거나 expected_DAL에 맞게 조정해주세요.`;
+    bgc='#fff8e1'; brc='#ba7517';
+    dispEl.style.display='block';
+  } else if(expDalRange && !expDalRange.includes(tLetter)) {
+    // 1-level mismatch — warn but allow
+    msg=`⚠️ expected_DAL(IDAL ${expDalRange.join('/')})과 1단계 불일치. 아키텍처 완화 또는 추가 근거가 있으면 진행 가능합니다.`;
+    bgc='#fff8e1'; brc='#ba7517'; ok=true;
+    dispEl.style.display='none';
+  } else {
+    ok=true; dispEl.style.display='none';
+    msg=`✅ Target IDAL ${tLetter} — expected_DAL과 일치. 항공 공학적으로 타당합니다.`;
+    bgc='#e8f4e8'; brc='#2d6a2d';
+  }
+
+  valEl.innerHTML=`<div style="background:${bgc};border:1px solid ${brc};border-radius:6px;padding:10px;font-size:11px;line-height:1.7">${msg}</div>`;
+  logEntry('target_DAL_validate', `IDAL ${tLetter}: ${ok?'OK':'WARN/REJECT'}`);
+  if(ok||disputeAccepted) updateFinal();
+}
+
+function acceptDispute() {
+  const reason = document.getElementById('dispute_reason').value.trim();
+  if(!reason){ alert('변경 거부 사유를 반드시 입력해주세요 (ARP4754B §5.1.4).'); return; }
+  disputeAccepted = true;
+  logEntry('target_DAL_dispute', `사용자 변경 거부: "${reason}"`);
+  document.getElementById('sec_dispute').style.display='none';
+  updateFinal();
+}
+
+// ─── final verdict ──────────────────────────────────────
+function updateFinal() {
+  const tLetter = document.getElementById('target_idal')?.value;
+  const sec = document.getElementById('sec_final');
+  if(!calcDalLetter||!tLetter){ sec.style.display='none'; return; }
+  sec.style.display='block';
+
+  const cN=IDAL_ORD.indexOf(calcDalLetter);
+  const tN=IDAL_ORD.indexOf(tLetter);
+  const cSev=Object.values(SEV_MAP).find(v=>v.idal===calcDalLetter);
+  const tSev=Object.values(SEV_MAP).find(v=>v.idal===tLetter);
+
+  // Cards
+  document.getElementById('card_calc').innerHTML=`
+    <div class="dal-card-lbl">📊 calc_DAL <small>FMEA+FTA 계산</small></div>
+    <div class="dal-card-val" style="color:${cSev?.color}">IDAL ${calcDalLetter} / AL ${cSev?.al}</div>
+    <div><span class="sev-pill" style="background:${cSev?.color}">${cSev?.label}</span></div>`;
+  document.getElementById('card_target').innerHTML=`
+    <div class="dal-card-lbl">🎯 target_DAL <small>시스템 요구</small></div>
+    <div class="dal-card-val" style="color:${tSev?.color}">IDAL ${tLetter} / AL ${tSev?.al}</div>
+    <div><span class="sev-pill" style="background:${tSev?.color}">${tSev?.label}</span></div>`;
+
+  const v=document.getElementById('final_verdict');
+  const i1ok=['C','D','E'].includes(calcDalLetter);
+
+  if(cN > tN) {
+    // calc is LESS stringent (higher number) than target → system inadequate
+    v.style.background='#fceaea'; v.style.color='#a32d2d'; v.style.border='2px solid #a32d2d';
+    v.innerHTML=`❌ 판정불가 — 시스템미흡<br>
+      <span style="font-size:12px;font-weight:400">calc_DAL(IDAL ${calcDalLetter}) &gt; target_DAL(IDAL ${tLetter})<br>
+      현재 FMEA/FTA 분석값이 Target 요구를 충족하지 못합니다.<br>
+      → 시스템 리던던시 추가·MLC 고장률 개선·아키텍처 재설계 필요<br>
+      → 계산 기록은 참고용으로 저장됩니다</span>`;
+    document.getElementById('btn_fha_next').disabled=true;
+    logEntry('FINAL', `판정불가-시스템미흡: calc=${calcDalLetter} > target=${tLetter}`);
+  } else if(cN === tN) {
+    v.style.background='#e8f4e8'; v.style.color='#1a5c1a'; v.style.border='2px solid #2d6a2d';
+    v.innerHTML=`✅ 적합 — 시스템 Target 충족<br>
+      <span style="font-size:12px;font-weight:400">calc_DAL = target_DAL = IDAL ${calcDalLetter}<br>현재 설계가 Target을 충족합니다. 다음 단계로 진행하세요.</span>`;
+    document.getElementById('btn_fha_next').disabled=false;
+    state.severity = Object.keys(SEV_MAP).find(k=>SEV_MAP[k].idal===calcDalLetter)||'MAJ';
+    selectedSev = state.severity;
+    logEntry('FINAL', `적합: calc=${calcDalLetter} = target=${tLetter}`);
+  } else {
+    // calc more stringent than target
+    v.style.background='#fff8e1'; v.style.color='#7a5000'; v.style.border='2px solid #ba7517';
+    v.innerHTML=`⚠️ 주의 — calc_DAL이 Target보다 보수적<br>
+      <span style="font-size:12px;font-weight:400">calc_DAL(IDAL ${calcDalLetter}) &lt; target_DAL(IDAL ${tLetter})<br>
+      현재 설계가 Target보다 엄격합니다.<br>
+      → 아키텍처 완화를 통해 Target 달성 계획이 타당합니다.<br>
+      → 다음 단계로 진행 가능합니다.</span>`;
+    document.getElementById('btn_fha_next').disabled=false;
+    state.severity = Object.keys(SEV_MAP).find(k=>SEV_MAP[k].idal===calcDalLetter)||'MAJ';
+    selectedSev = state.severity;
+    logEntry('FINAL', `주의: calc=${calcDalLetter} < target=${tLetter}. 완화 필요.`);
+  }
+
+  document.getElementById('final_issue1').innerHTML = i1ok
+    ? `<span style="background:#2d6a2d;color:#fff;padding:3px 12px;border-radius:10px;font-size:11px">✅ ED-324 Issue 1 적용 가능${calcDalLetter==='C'?' (상한)':''}</span>`
+    : `<span style="background:#a32d2d;color:#fff;padding:3px 12px;border-radius:10px;font-size:11px">❌ ED-324 Issue 1 적용 불가 (calc_DAL IDAL ${calcDalLetter})</span>`;
+
+  document.getElementById('final_log').innerHTML =
+    '<strong>판정 기록:</strong> ' + allLogs.map(l=>`[${l.ts}] ${l.key}: ${l.val}`).join(' · ');
+}
+
+function logEntry(key, val) {
+  const ts=new Date().toTimeString().split(' ')[0];
+  allLogs.push({ts,key,val});
+  // keep last 20
+  if(allLogs.length>20) allLogs.shift();
+}
+
+// legacy stubs
+function selectSev(s){state.severity=s;selectedSev=s;}
+function dalCalc(){}
+function validateTargetDal(){}
+
+
+// ══ KEPT: state / navigation / result ══
+let state = {
+  equip_name:'', developer:'', region:'', domain:'', status:'', equip_desc:'',
+  ml_mode:'', is_frozen:'',
+  severity:'', crew_aware:'',
+  output_role:'', odd_defined:'', has_safety_net:'', has_monitor:'',
+  input_dim:'', odd_partitions:'', formal_verified:''
+};
+
+let curStep = 0;
+function getAlCol(idal) {
+  const map = {A:'A', B:'B', C:'C', D:'D', E:'E'};
+  return map[idal] || 'C';
+}
+function goStep(n) {
+  if(n > 0) saveCurrentStep();
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel'+n).classList.add('active');
+  curStep = n;
+  updateIndicators();
+  if(n===4) renderResult();
+  window.scrollTo(0,0);
+}
+function saveCurrentStep() {
+  const fields = ['equip_name','developer','region','domain','status','equip_desc',
+    'ml_mode','is_frozen','crew_aware','output_role','odd_defined',
+    'has_safety_net','has_monitor','input_dim','odd_partitions','formal_verified'];
+  fields.forEach(f=>{const el=document.getElementById(f);if(el)state[f]=el.value;});
+}
+function updateIndicators() {
+  for(let i=0;i<5;i++){
+    const el=document.getElementById('ind'+i);
+    el.className='step-ind'+(i===curStep?' active':i<curStep?' done':'');
+  }
+}
+function checkPreFilter() {
+  const ml = document.getElementById('ml_mode').value;
+  const frz = document.getElementById('is_frozen').value;
+  const res = document.getElementById('prefilter_result');
+  const btn = document.getElementById('btn_pf_next');
+  if(!ml || !frz){res.innerHTML='';btn.disabled=true;return;}
+  let ok = true; let msg = '';
+  if(ml==='unsupervised'||ml==='rl'||ml==='other'){
+    ok=false;
+    msg=`<div class="alert alert-danger">❌ <strong>ED-324 Issue 1 적용 불가</strong><br>§1 Scope: "${ml==='rl'?'강화학습':'비지도학습/기타 AI'}"은 Issue 1 범위 외입니다. Issue 2 발행 후 적용 가능합니다.<br><small style="opacity:0.8">계속하려면 다른 ML 방식을 선택하세요.</small></div>`;
+  } else if(frz==='adaptive'){
+    ok=false;
+    msg=`<div class="alert alert-danger">❌ <strong>ED-324 Issue 1 적용 불가</strong><br>§1 Scope: "Adaptive ML(온라인 학습)"은 Issue 1 범위 외입니다. 배포 후 가중치가 고정된 non-adaptive ML만 해당됩니다.</div>`;
+  } else {
+    msg=`<div class="alert alert-success">✅ <strong>신청 적격성 통과</strong> — 비적응형 지도학습 확인. FHA 심각도 판정으로 진행합니다.</div>`;
+  }
+  res.innerHTML=msg;
+  btn.disabled=!ok;
+}
+let selectedSev = '';
+function selectSev(s) {
+  document.querySelectorAll('.severity-card').forEach(c=>c.classList.remove('selected'));
+  document.getElementById('sev_'+s).classList.add('selected');
+  selectedSev = s;
+  document.getElementById('btn_fha_next').disabled = false;
+  state.severity = s;
+}
+function renderResult() {
+  saveCurrentStep();
+  const sev = state.severity || selectedSev;
+  if(!sev){document.getElementById('result_content').innerHTML='<div class="alert alert-warn">⚠️ FHA 심각도를 먼저 선택해주세요.</div>';return;}
+  
+  const sm = SEVERITY_MAP[sev];
+  const domain = state.domain || document.getElementById('domain').value;
+  const isDal = domain !== 'atm';
+  
+  // Determine which AL column to use
+  let alCol = sm.idal;
+  
+  // Get applicable objectives
+  const appObjs = OBJECTIVES.filter(o => o.al[alCol]==='R' || o.al[alCol]==='R*');
+  const totalObjs = OBJECTIVES.length;
+  
+  // Group by appendix
+  const byApp = {};
+  appObjs.forEach(o=>{
+    if(!byApp[o.app])byApp[o.app]={name:o.app_name,items:[]};
+    byApp[o.app].items.push(o);
+  });
+
+  const equip = state.equip_name || document.getElementById('equip_name').value || '(미입력)';
+  const dev = state.developer || document.getElementById('developer').value || '';
+
+  let html = `
+  <div style="margin-bottom:12px">
+    <div style="font-size:12px;color:#888;margin-bottom:4px">판정 대상 장비</div>
+    <div style="font-size:14px;font-weight:600;color:#1a2b4a">${equip}${dev?` &nbsp;·&nbsp; <span style="font-weight:400;color:#555">${dev}</span>`:''}</div>
+  </div>
+
+  <div class="result-grid">
+    <div class="result-card idal">
+      <div class="val" style="color:#1a2b4a">IDAL ${sm.idal}</div>
+      <div class="lbl">Item DAL (항공기 탑재)</div>
+      <div style="font-size:10px;margin-top:4px;color:#888">ARP4754B/ED-79B 기준</div>
+    </div>
+    <div class="result-card al">
+      <div class="val" style="color:#185FA5">AL ${sm.al}</div>
+      <div class="lbl">Assurance Level (ATM/ANS)</div>
+      <div style="font-size:10px;margin-top:4px;color:#888">ED-109A/DO-278A 기준</div>
+    </div>
+    <div class="result-card swal">
+      <div class="val" style="color:#0F6E56">SWAL ${sm.swal}</div>
+      <div class="lbl">Software AL (ATM/ANS)</div>
+      <div style="font-size:10px;margin-top:4px;color:#888">ED-153 기준</div>
+    </div>
+  </div>
+
+  <div style="text-align:center;margin-bottom:12px">
+    <span class="scope-badge ${sm.ed324_ok?'scope-ok':'scope-no'}">
+      ${sm.ed324_ok
+        ? '✅ ED-324 Issue 1 적용 가능 — IDAL '+sm.idal+' / AL '+sm.al
+        : '❌ ED-324 Issue 1 적용 불가 — IDAL '+sm.idal+' / AL '+sm.al+' (범위 초과)'}
+    </span>
+  </div>`;
+
+  if(!sm.ed324_ok){
+    html += `<div class="alert alert-danger">
+      <strong>적용 불가 근거 (ED-324 §1 Scope):</strong><br>
+      IDAL A(AL1)와 IDAL B(AL2)는 Issue 1에서 "Recommended Practice is not addressed in this document"로 명시되어 있습니다 (Table 1).<br>
+      → 기존 ARP4754B + DO-178C/DO-254 프로세스만 적용. ED-324는 Issue 2 이후 확장 예정입니다.
+    </div>`;
+  } else {
+    html += `<div class="alert alert-warn" style="font-size:11px">
+      ⚠️ <strong>PSSA 수정 가능 (ED-324 §4.4.1.1):</strong> 이 판정은 고장 심각도 기반 초기 직접 할당값입니다. 
+      "This assignment can be modified based on the system architecture, the role of the MLC in that architecture, or other considerations emerging later in the process." — ARP4754B/ARP4761A PSSA 프로세스에서 최종 확정됩니다.
+    </div>`;
+
+    // Applicable objectives table
+    html += `<div class="obj-section">
+    <h3>필수 적용 목표 <span class="obj-count">(IDAL ${sm.idal} 기준: 총 ${appObjs.length}개 / 전체 ${totalObjs}개)</span></h3>`;
+
+    Object.values(byApp).forEach(app=>{
+      html += `<div style="margin-bottom:10px">
+      <div style="font-size:11px;font-weight:600;color:#1a2b4a;margin-bottom:4px;padding:4px 8px;background:#edf4ff;border-radius:4px">${app.name} — ${app.items.length}개 목표</div>
+      <table class="obj-table">
+      <tr><th style="width:60px">번호</th><th>목표 (한국어)</th><th style="width:60px;text-align:center">적용</th></tr>
+      ${app.items.map(o=>`<tr><td>${o.id}</td><td>${o.ko}</td><td style="text-align:center"><span class="tag-r">${o.al[alCol]}</span></td></tr>`).join('')}
+      </table></div>`;
+    });
+
+    // Non-applicable summary
+    const naObjs = OBJECTIVES.filter(o=>o.al[alCol]==='N');
+    if(naObjs.length>0){
+      html+=`<div style="font-size:11px;color:#888;margin-top:4px;padding:6px 8px;background:#f6f6f6;border-radius:4px">
+      해당없음 (N) 항목: ${naObjs.length}개 — 갭분석기에서 자동 처리 가능
+      </div>`;
+    }
+    html += `</div>`;
+
+    // MLC characteristics summary
+    const role = document.getElementById('output_role').value;
+    const snet = document.getElementById('has_safety_net').value;
+    const mon = document.getElementById('has_monitor').value;
+    const fv = document.getElementById('formal_verified').value;
+    if(role||snet||mon||fv){
+      html += `<div class="obj-section" style="margin-top:12px">
+      <h3>MLC 아키텍처 특성 기록</h3>
+      <div class="result-box" style="font-size:11px;line-height:2">
+      ${role?`<div>• <strong>출력 역할:</strong> ${role==='cmd'?'직접 제어 명령 (CMD)':role==='adv'?'조종사 권고 (ADV)':'정보 제공 (INF)'}</div>`:''}
+      ${snet?`<div>• <strong>결정론적 안전망:</strong> ${snet==='yes'?'✅ 있음 (비-ML 백업 존재)':'❌ 없음 — 단독 ML 동작'}</div>`:''}
+      ${mon?`<div>• <strong>실시간 감시 모듈:</strong> ${mon==='yes'?'✅ 있음':'❌ 없음'}</div>`:''}
+      ${fv?`<div>• <strong>형식 검증:</strong> ${fv==='yes'?'✅ 수행':'미수행'}</div>`:''}
+      <div style="margin-top:6px;color:#aaa">※ 아키텍처 특성은 IDAL 결정에 직접 반영되지 않습니다. PSSA에서 검토하세요. (ED-324 §4.4.1.1)</div>
+      </div></div>`;
+    }
+
+    // Link to gap analyzer
+    html += `<div style="margin-top:14px;padding:12px;background:#f0f4fa;border-radius:8px;font-size:12px">
+    <strong>📋 갭분석기 연동</strong><br>
+    판정 완료 후 갭분석기에서 AL 설정을 IDAL ${sm.idal}(AL${sm.al})로 선택하면, 
+    위 ${appObjs.length}개 필수 목표만 체크 대상으로 처리됩니다.<br>
+    <button class="link-btn" onclick="openGapAnalyzer('${sm.idal}','${sm.al}','${equip}')">갭분석기 열기 (새 탭) →</button>
+    </div>`;
+  }
+
+  // Source note
+  html += `<div style="margin-top:12px;font-size:10px;color:#bbb;text-align:right">
+  출처: EUROCAE ED-324 §1 Scope, §4.4.1.1, Table 1 · ARP4754B §5.2 · ARP4761A §5
+  </div>`;
+
+  document.getElementById('result_content').innerHTML = html;
+}
+function openGapAnalyzer(idal, al, equip) {
+  // Store result for gap analyzer
+  localStorage.setItem('ed324_determination', JSON.stringify({idal, al, equip, ts: new Date().toISOString()}));
+  // Open gap analyzer if available
+  alert(`판정 결과 저장됨:\n장비: ${equip}\nIDAL: ${idal} / AL: ${al}\n\n갭분석기(ed324_gap_analyzer_ko.html)를 열고\n"프로젝트 정보"에서 AL을 수동으로 설정해주세요.`);
+}
+document.getElementById('domain').addEventListener('change', function(){state.domain=this.value;});
+</script>
+</body>
+</html>
